@@ -2,22 +2,11 @@ class Maze
 
   attr_reader :maze_grid, :start_point, :end_point
 
-  def initialize
-    @maze_grid = maze_array(TEST_MAZE)
+  def initialize(maze)
+    @maze_grid = maze_array(maze)
     @start_point = find_point("S")
     @end_point = find_point("E")
   end
-
-  MAZE = ["****************",
-    '*         *   E*',
-    '*    *    *  ***',
-    '*    *    *    *',
-    '*    *    *    *',
-    '*    *    *    *',
-    '*S   *         *',
-    '****************']
-
-  TEST_MAZE = ["*******", "*S   E*", "*******"]
 
   def maze_array(maze_text)
     maze_array = maze_text.map do | line |
@@ -58,6 +47,8 @@ class Pather
     @maze = maze
     @start_point = maze.start_point
     @end_point= maze.end_point
+    @failed_paths = []
+    @solved_paths = []
   end
 
   def display
@@ -71,52 +62,26 @@ class Pather
     solved = false
     pos = @start_point
     path = [@start_point]
-    until solved
-      pos, path, advanced = find_move(pos, path)
-      if advanced == false
-        puts "Maze cannot be solved."
-        exit
-      else
-        if solved?(pos)
-          puts "Maze solved!"
-          p path
-          solved = true
-        end
-      end
-    end
+    find_move(pos, path)
+    p @failed_paths.length
+    p @solved_paths.length
+    shortest_path = @solved_paths.min_by { |path | path.length }
+    display_path(shortest_path)
+    shortest_path
   end
 
   def find_move(pos, path)
     x, y = pos
-    if move_up?(pos, path)
-      y += 1
-      new_pos = [x, y]
-      puts "Moving up"
-      path << new_pos
-      advanced = true
-    elsif move_down?(pos, path)
-      y -= 1
-      new_pos = [x, y]
-      puts "Moving down"
-      path << new_pos
-      advanced = true
-    elsif move_left?(pos, path)
-      x -= 1
-      new_pos = [x, y]
-      puts "Moving left"
-      path << new_pos
-      advanced = true
-    elsif move_right?(pos, path)
-      x += 1
-      new_pos = [x, y]
-      puts "Moving right"
-      path << new_pos
-      advanced = true
+    if solved?(pos)
+      @solved_paths << path
+      return nil
     else
-      puts "No where to move."
-      advanced = false
+      move_down(pos, path)
+      move_right(pos, path)
+      move_up(pos, path)
+      move_left(pos, path)
     end
-    return new_pos, path, advanced
+    return nil
   end
 
   def can_advance?(pos, path)
@@ -130,40 +95,120 @@ class Pather
     pos == @end_point
   end
 
-  def move_up?(pos, path)
+  def display_path(path)
+    maze_chars = ['*', 'E', 'S']
+    @maze.maze_grid.each_with_index do | row, y|
+      row.each_with_index do | col, x |
+        if maze_chars.include?(col)
+          print col
+        elsif path.include?([x, y])
+          print "X"
+        else
+          print " "
+        end
+      end
+      print "\n"
+    end
+  end
+
+  def move_down(pos, path)
+    path_copy = path.dup
     x, y = pos
     y += 1
-    can_advance?([x, y], path)
+    if can_advance?([x, y], path_copy)
+      # puts "Moving down"
+      path_copy << [x, y]
+      find_move([x, y], path_copy)
+    else
+      # puts "Route failed"
+      @failed_paths << path_copy
+    end
+    return nil
   end
 
-  def move_right?(pos, path)
+  def move_right(pos, path)
+    path_copy = path.dup
     x, y = pos
     x += 1
-    can_advance?([x, y], path)
+    if can_advance?([x, y], path_copy)
+      # puts "Moving right"
+      path_copy << [x, y]
+      find_move([x, y], path_copy)
+    else
+      # puts "Route failed"
+      @failed_paths << path_copy
+    end
+    return nil
   end
 
-  def move_down?(pos, path)
+  def move_up(pos, path)
+    path_copy = path.dup
     x, y = pos
     y -= 1
-    can_advance?([x, y], path)
+    if can_advance?([x, y], path_copy)
+      # puts "Moving up"
+      path_copy << [x, y]
+      find_move([x, y], path_copy)
+    else
+      # puts "Route failed"
+      @failed_paths << path_copy
+    end
+    return nil
   end
 
-  def move_left?(pos, path)
+  def move_left(pos, path)
+    path_copy = path.dup
     x, y = pos
     x -= 1
-    can_advance?([x, y], path)
+    if can_advance?([x, y], path_copy)
+      # puts "Moving left"
+      path_copy << pos
+      find_move([x, y], path_copy)
+    else
+      # puts "Route failed"
+      @failed_paths << path_copy
+    end
+    return nil
   end
 
 end
 
-a = Maze.new
-a.display
+
+MAZE = ["****************",
+  '*         *   E*',
+  '*    *    *  ***',
+  '*    *    *    *',
+  '*    *    *    *',
+  '*    *    *    *',
+  '*S   *         *',
+  '****************']
+
+SMALL_MAZE = ["****************",
+  '*        **    *',
+  '*  ***   **  ***',
+  '*  ***   *******',
+  '*  ***   **  ***',
+  '*  ***   **E ***',
+  '*S ***       ***',
+  '****************']
+
+VERTICAL_MAZE = ['***',
+"*S *",
+"*  *",
+"*  *",
+"* E*",
+"****"]
+
+VERTICAL_MAZE_2 = ['*******',
+"*S * E*",
+"*  *  *",
+"*  *  *",
+"*     *",
+"*******"]
+
+TEST_MAZE = ["*******", "*S   E*", "*******"]
+
+a = Maze.new(SMALL_MAZE)
 b = Pather.new(a)
-b.display
 p b.start_point
-p b.maze[b.start_point]
-p b.maze[b.end_point]
-p b.solved?(b.end_point)
-p b.move_right?(b.start_point,[b.start_point])
-p b.move_up?(b.start_point,[b.start_point])
 b.solve_maze
